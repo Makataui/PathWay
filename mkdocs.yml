@@ -1,0 +1,7 @@
+site_name: Pathway Docs
+site_url: http://localhost:8001
+nav:
+  - Home: index.md
+  - API Guide: api.md
+  - Deployment: deployment.md
+theme: material

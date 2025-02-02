@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pathways App{% endblock %}</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        nav { background-color: #333; padding: 10px; }
+        nav a { color: white; text-decoration: none; margin-right: 15px; font-size: 18px; }
+        nav a:hover { text-decoration: underline; }
+        .container { padding: 20px; }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Menu -->
+    <nav>
+        <a href="/">Home</a>
+        <a href="/settings">Settings</a>
+        <a href="/viewer">Viewer</a>
+        <a href="/upload">Viewer</a>
+        <a href="/report">Report</a>
+        <a href="/database">Database</a>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+</body>
+</html>

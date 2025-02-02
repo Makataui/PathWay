@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Slide Viewer{% endblock %}
+
+{% block content %}
+    <h1>Slide Viewer</h1>
+    <p>Select a slide to view:</p>
+
+    <!-- Slide Selection Dropdown -->
+    <form method="GET">
+        <select id="slideSelect" onchange="updateViewer()">
+            {% for slide in slides %}
+                <option value="{{ slide }}">{{ slide }}</option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <!-- Layout for Viewer and Reports -->
+    <div style="display: flex; gap: 20px; margin-top: 20px;">
+        <!-- OpenSeadragon Viewer -->
+        <div style="flex: 2; border: 1px solid black;">
+            <div id="openseadragon-viewer" style="width: 800px; height: 600px;"></div>
+        </div>
+
+        <!-- Report Boxes -->
+        <div style="flex: 1;">
+            <h2>Report</h2>
+            <label><b>Macroscopy</b></label>
+            <textarea id="macroscopy" rows="3" style="width: 100%;"></textarea>
+            <label><b>Microscopy</b></label>
+            <textarea id="microscopy" rows="3" style="width: 100%;"></textarea>
+            <label><b>Clinical Details</b></label>
+            <textarea id="clinical" rows="3" style="width: 100%;"></textarea>
+            <label><b>Diagnosis</b></label>
+            <textarea id="diagnosis" rows="3" style="width: 100%;"></textarea>
+        </div>
+    </div>
+
+    <!-- OpenSeadragon Viewer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.0.0/openseadragon.min.js"></script>
+    <script>
+        let viewer;
+
+        function updateViewer() {
+            let selectedSlide = document.getElementById("slideSelect").value;
+
+            fetch(`/metadata/${selectedSlide}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("macroscopy").value = data.macroscopy || "N/A";
+                    document.getElementById("microscopy").value = data.microscopy || "N/A";
+                    document.getElementById("clinical").value = data.clinical || "N/A";
+                    document.getElementById("diagnosis").value = data.diagnosis || "N/A";
+
+                    
+                    console.log(data.level_dimensions);
+                    let dziUrl = `/dzi/${selectedSlide}.dzi`;
+                    let maxLevel = data.levels - 1;  // The highest resolution level
+                    let maxSize = data.level_dimensions[maxLevel];
+
+                    console.log("Loading DZI:", dziUrl);
+
+                    // ✅ Initialize OpenSeadragon viewer (if not already created)
+                    if (!window.viewer) {
+                        window.viewer = OpenSeadragon({
+                            id: "openseadragon-viewer",
+                            prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.0.0/images/",
+                            tileSources: {
+                                Image: {
+                                    xmlns: "http://schemas.microsoft.com/deepzoom/2008",
+                                    Url: "/tiles/" + selectedSlide + "/",
+                                    Format: "jpeg",
+                                    Overlap: "1",
+                                    TileSize: "256",
+                                    Size: {
+                                        Width: maxSize[0],  
+                                        Height: maxSize[1]  
+                                    }
+                                }
+                            },
+                            tileUrlFunction: function(level, x, y) {
+                                let tileUrl = `/tiles/${selectedSlide}/${level}/${x}_${y}.jpeg`;
+                                
+                                //Remove OpenSeadragon's "_files" issue
+                                tileUrl = tileUrl.replace("_files/", "/");
+
+                                console.log("🔹 Fetching tile:", tileUrl);
+                                return tileUrl;
+                            },
+                            maxZoomPixelRatio: 1.5,
+                            minLevel: 0,
+                            maxLevel: data.levels - 1 // Ensures it doesn't zoom too far
+                        });
+                    } else {
+                        // ✅ Update viewer with new slide
+                        window.viewer.open({
+                            Image: {
+                                xmlns: "http://schemas.microsoft.com/deepzoom/2008",
+                                Url: "/tiles/" + selectedSlide + "/",
+                                Format: "jpeg",
+                                Overlap: "1",
+                                TileSize: "256",
+                                Size: {
+                                    Width: maxSize[0],
+                                    Height: maxSize[1]
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(error => console.error("Error fetching metadata:", error));
+        }
+
+        // ✅ Run updateViewer() on page load
+        document.addEventListener("DOMContentLoaded", updateViewer);
+
+
+    </script>
+    
+    
+    
+    
+{% endblock %}

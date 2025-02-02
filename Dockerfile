@@ -8,11 +8,17 @@ RUN pip install poetry poetry-plugin-export
 
 COPY ./pyproject.toml ./poetry.lock* /tmp/
 
-RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --with dev
 
 
 # --------- final image build ---------
 FROM python:3.11
+
+# Install system dependencies for OpenSlide
+RUN apt-get update && apt-get install -y \
+    libopenslide-dev \
+    openslide-tools \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code
 

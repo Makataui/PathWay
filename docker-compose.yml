@@ -1,16 +1,16 @@
-version: '3.8'
+version: "3.8"
 
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    # -------- replace with comment to run with gunicorn --------
+    # -------- Replace with comment to run with gunicorn --------
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     # command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
     env_file:
       - ./src/.env
-    # -------- replace with comment if you are using nginx --------
+    # -------- Replace with comment if you are using nginx --------
     ports:
       - "8000:8000"
     # expose:
@@ -21,6 +21,7 @@ services:
     volumes:
       - ./src/app:/code/app
       - ./src/.env:/code/.env
+      - ./slides:/code/slides
 
   worker:
     build:
@@ -42,11 +43,11 @@ services:
       - ./src/.env
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    # -------- replace with comment to run migrations with docker --------
+    # -------- Replace with comment to run migrations with docker --------
     expose:
       - "5432"
     # ports:
-    #  - 5432:5432
+    #  - "5432:5432"
 
   redis:
     image: redis:alpine
@@ -55,21 +56,32 @@ services:
     expose:
       - "6379"
 
-  #-------- uncomment to run with pgadmin --------
-  # pgadmin:
-  #   container_name: pgadmin4
-  #   image: dpage/pgadmin4:latest
-  #   restart: always
-  #   ports:
-  #     - "5050:80"
-  #   volumes:
-  #     - pgadmin-data:/var/lib/pgadmin
-  #   env_file:
-  #     - ./src/.env
-  #   depends_on:
-  #     - db
+  docs:
+    build: .
+    container_name: fastapi_docs
+    working_dir: /code
+    volumes:
+      - ./docs:/code/docs 
+      - ./mkdocs.yml:/code/mkdocs.yml
+    ports:
+      - "8001:8000"
+    command: mkdocs serve -a 0.0.0.0:8000
 
-  #-------- uncomment to run with nginx --------
+  # -------- Uncomment to run with pgAdmin --------
+  pgadmin:
+    container_name: pathway_pgadmin4
+    image: dpage/pgadmin4:latest
+    restart: always
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    env_file:
+      - ./src/.env
+    depends_on:
+      - db
+
+  # -------- Uncomment to run with nginx --------
   # nginx:
   #   image: nginx:latest
   #   ports:
@@ -79,7 +91,7 @@ services:
   #   depends_on:
   #     - web
 
-  #-------- uncomment to create first superuser --------
+  # -------- Uncomment to create first superuser --------
   # create_superuser:
   #   build:
   #     context: .
@@ -93,7 +105,7 @@ services:
   #   volumes:
   #     - ./src:/code/src
 
-  #-------- uncomment to run tests --------
+  # -------- Uncomment to run tests --------
   # pytest:
   #   build:
   #     context: .
@@ -107,7 +119,7 @@ services:
   #   volumes:
   #     - .:/code
 
-  #-------- uncomment to create first tier --------
+  # -------- Uncomment to create first tier --------
   # create_tier:
   #   build:
   #     context: .
@@ -124,4 +136,5 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  #pgadmin-data:
+  pgadmin-data:
+  slides: 
