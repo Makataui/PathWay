@@ -318,7 +318,7 @@ def create_application(
         try:
             dzi = get_deepzoom(slide_path).get_dzi("jpeg")
 
-            # ✅ Fix the Tile URL in DZI XML
+            # Fix the Tile URL in DZI XML
             corrected_dzi = dzi.replace(f"{slide_name}_files/", f"tiles/{slide_name}/")
             logger.info(f"DZI successfully generated for: {slide_name}")
             return Response(content=corrected_dzi, media_type="application/xml")
