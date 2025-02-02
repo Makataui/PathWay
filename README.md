@@ -1,6 +1,7 @@
 <h1 align="center"> PathWay</h1>
 <p align="center" markdown=1>
   <i>A bridge for your digital pathology files</i>
+  <br>
   <i>Built loving with help a starting template from: FastAPI-Boilerplate</i>
 </p>
 
