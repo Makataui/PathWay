@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDC Form Creator</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        h1, h2 { text-align: center; }
+        form { display: flex; flex-direction: column; gap: 10px; }
+        input, select, button { padding: 8px; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .form-list { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create an SDC Form</h1>
+        <form action="/create_sdc_form/" method="post">
+            <label>SDC Form Name:</label>
+            <input type="text" name="name" required>
+            <button type="submit">Create</button>
+        </form>
+
+        <h2>Add SDC Question</h2>
+        <form action="/add_sdc_question/" method="post">
+            <label>SDC Form ID:</label>
+            <input type="number" name="sdc_form_id" required>
+
+            <label>Question Text:</label>
+            <input type="text" name="text" required>
+
+            <label>Type:</label>
+            <select name="type" id="question_type" onchange="toggleUnitField()">
+                <option value="Free Text">Free Text</option>
+                <option value="Dropdown">Dropdown</option>
+            </select>
+
+            <label id="unit_label">Unit of Measurement (Optional):</label>
+            <input type="text" name="unit_of_measurement" id="unit_field">
+
+            <label>Options (Comma-separated for dropdown):</label>
+            <input type="text" name="options">
+
+            <button type="submit">Add Question</button>
+        </form>
+
+        <h2>Existing SDC Forms</h2>
+        <div class="form-list">
+            {% for form in sdc_forms %}
+                <p>
+                    <strong>{{ form.name }}</strong> 
+                    (<a href="/view_sdc_form/{{ form.id }}">View Details</a>)
+                </p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function toggleUnitField() {
+            const typeField = document.getElementById("question_type");
+            const unitField = document.getElementById("unit_field");
+            const unitLabel = document.getElementById("unit_label");
+
+            if (typeField.value === "Free Text") {
+                unitField.style.display = "block";
+                unitLabel.style.display = "block";
+            } else {
+                unitField.style.display = "none";
+                unitLabel.style.display = "none";
+            }
+        }
+        toggleUnitField();
+    </script>
+</body>
+</html>
