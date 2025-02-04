@@ -131,15 +131,15 @@ This setup uses a basic AV to validate files against. Security of uploaded and m
 - ⚖️ NGINX Reverse Proxy and Load Balancing
 
 ## 3. Contents
-0. [PathWay]
+0. [PathWay](#what-is-pathway)
 0. [Pathway's Features](#0-features)
-    0. [PathWay's Inspiration](#01-inspiration)
-    0. [International Profiles](#02-international-profiles)
-    0. [Radiologists](#03-radiologists)
-    0. [IMR](#04-imr---interactive-multimedia-report-presentation)
-    0. [Saving And Embedding IMRs](#05-saving-and-embedding-imrs)
-    0. [FHIR Structure](#06-fhir-structure)
-    0.7 [HL7 Conversion / Mapping](#07-hl7-conversion--mapping)
+    1. [PathWay's Inspiration](#01-inspiration)
+    1. [International Profiles](#02-international-profiles)
+    1. [Radiologists](#03-radiologists)
+    1. [IMR](#04-imr---interactive-multimedia-report-presentation)
+    1. [Saving And Embedding IMRs](#05-saving-and-embedding-imrs)
+    1. [FHIR Structure](#06-fhir-structure)
+    1. [HL7 Conversion / Mapping](#07-hl7-conversion--mapping)
 1. [About The Tech](#1-about---tech-stack-and-open-source-libraries)
 1. [Tech Features](#2-tech-features)
 1. [Contents](#3-contents)
