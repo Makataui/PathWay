@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   web:
     build:
@@ -83,14 +81,16 @@ services:
       - db
 
   clamav:
-    image: clamav/clamav:latest
-    container_name: clamav
-    restart: always
-    ports:
-      - "3310:3310"  # Expose ClamAV for scanning
-    volumes:
-      - ./Imported_Files:/scans  # Mount the folder where files will be scanned
-    command: freshclam -d && clamd  # Keep ClamAV updated and run daemon
+      image: clamav/clamav:latest
+      container_name: clamav-1
+      restart: always
+      ports:
+        - "3310:3310"  # Expose ClamAV for scanning
+      volumes:
+        - ./Imported_Files:/scans
+        - clamav-db:/var/lib/clamav  # Persist ClamAV signature database
+        - clamav-socket:/run/clamav  # Ensure Clamd can find its socket
+      command: ["/bin/sh", "-c", "freshclam && mkdir -p /run/clamav && clamd"]
 
 
   # -------- Uncomment to run with nginx --------
@@ -150,3 +150,5 @@ volumes:
   redis-data:
   pgadmin-data:
   slides: 
+  clamav-db:
+  clamav-socket:
