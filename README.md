@@ -57,11 +57,19 @@ Well, it's a combination of an API, several other open sources tools which this 
 
 #### What is Structured Data Capture (SDC)?
 
+### DICOM SR (Structured Reporting) vs SDC vs XML datasets versus FHIR
+
 #### What is Unstructured Data?
 
 ### What It Is Not:
 
 It is not designed to be a universal viewer or converter - the viewer provided is just for demonstration purposes of the capabilities of the software and to help visualise it for users - which is why things like Postgres are provided as part of the Docker Compose but ideally you will map these to your own databases, softwares, APIs and middlewares. 
+
+
+### Quick Note About File Security and File Validation: 
+
+This setup uses a basic AV to validate files against. Security of uploaded and mapped files is not guaranteed and is the end users responsibility - there is only a basic check here. 
+
 
 ## 0. Features
 
@@ -139,6 +147,7 @@ It is not designed to be a universal viewer or converter - the viewer provided i
    1. [Environment Variables (.env)](#41-environment-variables-env)
    1. [Docker Compose](#42-docker-compose-preferred)
    1. [From Scratch](#43-from-scratch)
+1. [Terminology](#5-terminology)
 1. [Imaging](#6-other-imaging)
     1. [Other Clinical Imaging](#61-clinical-imaging)
     1. [Grossing / Specimen Macro Imaging](#62-grossingcut-upspecimen-macro-imaging)
@@ -163,6 +172,8 @@ ______________________________________________________________________
 ### 4.2 Docker Compose (Preferred)
 
 ### 4.3 From Scratch Setup
+
+### 5. Terminology
 
 ## 6. Other Imaging
 

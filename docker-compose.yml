@@ -22,6 +22,7 @@ services:
       - ./src/app:/code/app
       - ./src/.env:/code/.env
       - ./slides:/code/slides
+      - ./imported_files:/code/imported_files
 
   worker:
     build:
