@@ -80,6 +80,10 @@ Well, it's a combination of an API, several other open sources tools which this 
 
 ### 0.7 HL7 Conversion / Mapping
 
+### 0.8 Mapping Other Clinical Data And Imaging
+
+### 0.9 Dealing With Challenges of IMR, specifically in Digital Pathology
+
 ## 1. About - Tech Stack and Open Source Libraries
 
 **FastAPI boilerplate** creates an extendable async API using FastAPI, Pydantic V2, SQLAlchemy 2.0 and PostgreSQL:
@@ -131,6 +135,13 @@ Well, it's a combination of an API, several other open sources tools which this 
    1. [Environment Variables (.env)](#41-environment-variables-env)
    1. [Docker Compose](#42-docker-compose-preferred)
    1. [From Scratch](#43-from-scratch)
+1. [Imaging](#6-other-imaging)
+    1. [Other Clinical Imaging](#61-clinical-imaging)
+    1. [Grossing / Specimen Macro Imaging](#62-grossingcut-upspecimen-macro-imaging)
+1. [Data Control And Privacy](#7-data-control-and-privacy)
+    1. [Data Pipelines](#71-data-pipelines)
+    1. [Data Anonymisation](#72-anonymisation---data-identifier)
+    1. [WSI Labels](#73-label)
 1. [Testing](#8-testing)
 1. [Contributing](#9-contributing)
 1. [References](#10-references)
@@ -148,6 +159,20 @@ ______________________________________________________________________
 ### 4.2 Docker Compose (Preferred)
 
 ### 4.3 From Scratch Setup
+
+## 6. Other Imaging
+
+### 6.1 Clinical Imaging
+
+### 6.2 Grossing/Cut-up/Specimen Macro Imaging
+
+## 7. Data Control And Privacy
+
+### 7.1 Data Pipelines
+
+### 7.2 Anonymisation - Data Identifier
+
+### 7.3 Label 
 
 ## 8. Testing
 
