@@ -59,6 +59,10 @@ Well, it's a combination of an API, several other open sources tools which this 
 
 #### What is Unstructured Data?
 
+### What It Is Not:
+
+It is not designed to be a universal viewer or converter - the viewer provided is just for demonstration purposes of the capabilities of the software and to help visualise it for users - which is why things like Postgres are provided as part of the Docker Compose but ideally you will map these to your own databases, softwares, APIs and middlewares. 
+
 ## 0. Features
 
 - XML Importer and Mapper For Datasets/SDC
