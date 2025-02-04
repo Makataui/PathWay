@@ -57,7 +57,7 @@ Well, it's a combination of an API, several other open sources tools which this 
 
 #### What is Structured Data Capture (SDC)?
 
-### DICOM SR (Structured Reporting) vs SDC vs XML datasets versus FHIR
+### DICOM SR (Structured Reporting) vs SDC vs XML datasets vs FHIR/FHIR SDC/Questionnaires
 
 #### What is Unstructured Data?
 
