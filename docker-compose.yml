@@ -82,6 +82,17 @@ services:
     depends_on:
       - db
 
+  clamav:
+    image: clamav/clamav:latest
+    container_name: clamav
+    restart: always
+    ports:
+      - "3310:3310"  # Expose ClamAV for scanning
+    volumes:
+      - ./Imported_Files:/scans  # Mount the folder where files will be scanned
+    command: freshclam -d && clamd  # Keep ClamAV updated and run daemon
+
+
   # -------- Uncomment to run with nginx --------
   # nginx:
   #   image: nginx:latest
