@@ -49,7 +49,22 @@ It's an easily deployable containerised solution that can take synoptic reports 
 
 It can then send these onwards or store them for you.
 
+#### How?
+
+Well, it's a combination of an API, several other open sources tools which this would not be possible without and a lot of other inputs.
+
+#### How is the Synoptic Report defined?
+
+#### What is Structured Data Capture (SDC)?
+
+#### What is Unstructured Data?
+
 ## 0. Features
+
+- XML Importer and Mapper For Datasets/SDC
+- Docker Startup for easy, cloud agnostic cloud deployment in any stack
+- FHIR Server and REST API, following latest standardise
+- Support for SNOMED
 
 ## 1. About - Tech Stack and Open Source Libraries
 
