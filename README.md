@@ -57,7 +57,19 @@ Well, it's a combination of an API, several other open sources tools which this 
 
 #### What is Structured Data Capture (SDC)?
 
+### DICOM SR (Structured Reporting) vs SDC vs XML datasets versus FHIR
+
 #### What is Unstructured Data?
+
+### What It Is Not:
+
+It is not designed to be a universal viewer or converter - the viewer provided is just for demonstration purposes of the capabilities of the software and to help visualise it for users - which is why things like Postgres are provided as part of the Docker Compose but ideally you will map these to your own databases, softwares, APIs and middlewares. 
+
+
+### Quick Note About File Security and File Validation: 
+
+This setup uses a basic AV to validate files against. Security of uploaded and mapped files is not guaranteed and is the end users responsibility - there is only a basic check here. 
+
 
 ## 0. Features
 
@@ -65,6 +77,24 @@ Well, it's a combination of an API, several other open sources tools which this 
 - Docker Startup for easy, cloud agnostic cloud deployment in any stack
 - FHIR Server and REST API, following latest standardise
 - Support for SNOMED
+
+### 0.1 Inspiration
+
+### 0.2 International Profiles
+
+### 0.3 Radiologists
+
+### 0.4 IMR - Interactive Multimedia Report Presentation
+
+### 0.5 Saving And Embedding IMRs
+
+### 0.6 FHIR Structure
+
+### 0.7 HL7 Conversion / Mapping
+
+### 0.8 Mapping Other Clinical Data And Imaging
+
+### 0.9 Dealing With Challenges of IMR, specifically in Digital Pathology
 
 ## 1. About - Tech Stack and Open Source Libraries
 
@@ -103,6 +133,13 @@ Well, it's a combination of an API, several other open sources tools which this 
 ## 3. Contents
 0. [PathWay]
 0. [Pathway's Features](#0-features)
+    0. [PathWay's Inspiration](#01-inspiration)
+    0. [International Profiles](#02-international-profiles)
+    0. [Radiologists](#03-radiologists)
+    0. [IMR](#04-imr---interactive-multimedia-report-presentation)
+    0. [Saving And Embedding IMRs](#05-saving-and-embedding-imrs)
+    0. [FHIR Structure](#06-fhir-structure)
+    0.7 [HL7 Conversion / Mapping](#07-hl7-conversion--mapping)
 1. [About The Tech](#1-about---tech-stack-and-open-source-libraries)
 1. [Tech Features](#2-tech-features)
 1. [Contents](#3-contents)
@@ -110,6 +147,14 @@ Well, it's a combination of an API, several other open sources tools which this 
    1. [Environment Variables (.env)](#41-environment-variables-env)
    1. [Docker Compose](#42-docker-compose-preferred)
    1. [From Scratch](#43-from-scratch)
+1. [Terminology](#5-terminology)
+1. [Imaging](#6-other-imaging)
+    1. [Other Clinical Imaging](#61-clinical-imaging)
+    1. [Grossing / Specimen Macro Imaging](#62-grossingcut-upspecimen-macro-imaging)
+1. [Data Control And Privacy](#7-data-control-and-privacy)
+    1. [Data Pipelines](#71-data-pipelines)
+    1. [Data Anonymisation](#72-anonymisation---data-identifier)
+    1. [WSI Labels](#73-label)
 1. [Testing](#8-testing)
 1. [Contributing](#9-contributing)
 1. [References](#10-references)
@@ -127,6 +172,22 @@ ______________________________________________________________________
 ### 4.2 Docker Compose (Preferred)
 
 ### 4.3 From Scratch Setup
+
+### 5. Terminology
+
+## 6. Other Imaging
+
+### 6.1 Clinical Imaging
+
+### 6.2 Grossing/Cut-up/Specimen Macro Imaging
+
+## 7. Data Control And Privacy
+
+### 7.1 Data Pipelines
+
+### 7.2 Anonymisation - Data Identifier
+
+### 7.3 Label 
 
 ## 8. Testing
 
