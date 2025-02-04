@@ -1,4 +1,4 @@
-<h1 align="center"> PathWay</h1>
+<h1 align="center"> PathWay [WIP]</h1>
 <p align="center" markdown=1>
   <i>A bridge for your digital pathology files</i>
   <br>
@@ -42,6 +42,8 @@
 # What is PathWay?
 
 PathWay is many things but at it's heart, it has the following idea: to help build a bridge for pathology reporting of the future, combining WSI(Whole Slide Imaging/Images) with Synoptic Reporting. 
+
+Currently it's just being set up but I thought I'd document the journey publicly here rather than building it and then just releasing 0.1.0. 
 
 ### Elevator Pitch
 
