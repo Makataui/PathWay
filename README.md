@@ -148,6 +148,7 @@ This setup uses a basic AV to validate files against. Security of uploaded and m
    1. [Docker Compose](#42-docker-compose-preferred)
    1. [From Scratch](#43-from-scratch)
 1. [Terminology](#5-terminology)
+    1. [Term Definition](#51-term-definition)
 1. [Imaging](#6-other-imaging)
     1. [Other Clinical Imaging](#61-clinical-imaging)
     1. [Grossing / Specimen Macro Imaging](#62-grossingcut-upspecimen-macro-imaging)
@@ -173,7 +174,9 @@ ______________________________________________________________________
 
 ### 4.3 From Scratch Setup
 
-### 5. Terminology
+## 5. Terminology
+
+### 5.1 Term Definition
 
 ## 6. Other Imaging
 
