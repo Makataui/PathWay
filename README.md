@@ -66,6 +66,20 @@ Well, it's a combination of an API, several other open sources tools which this 
 - FHIR Server and REST API, following latest standardise
 - Support for SNOMED
 
+### 0.1 Inspiration
+
+### 0.2 International Profiles
+
+### 0.3 Radiologists
+
+### 0.4 IMR - Interactive Multimedia Report Presentation
+
+### 0.5 Saving And Embedding IMRs
+
+### 0.6 FHIR Structure
+
+### 0.7 HL7 Conversion / Mapping
+
 ## 1. About - Tech Stack and Open Source Libraries
 
 **FastAPI boilerplate** creates an extendable async API using FastAPI, Pydantic V2, SQLAlchemy 2.0 and PostgreSQL:
@@ -103,6 +117,13 @@ Well, it's a combination of an API, several other open sources tools which this 
 ## 3. Contents
 0. [PathWay]
 0. [Pathway's Features](#0-features)
+    0. [PathWay's Inspiration](#01-inspiration)
+    0. [International Profiles](#02-international-profiles)
+    0. [Radiologists](#03-radiologists)
+    0. [IMR](#04-imr---interactive-multimedia-report-presentation)
+    0. [Saving And Embedding IMRs](#05-saving-and-embedding-imrs)
+    0. [FHIR Structure](#06-fhir-structure)
+    0.7 [HL7 Conversion / Mapping](#07-hl7-conversion--mapping)
 1. [About The Tech](#1-about---tech-stack-and-open-source-libraries)
 1. [Tech Features](#2-tech-features)
 1. [Contents](#3-contents)
