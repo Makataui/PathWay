@@ -107,6 +107,17 @@ ______________________________________________________________________
 
 ### 4.0 Start
 
+### 4.1 Environment Variables
+
+### 4.2 Docker Compose (Preferred)
+
+### 4.3 From Scratch Setup
+
+## 8. Testing
+
+## 9. Contributing
+
+## 10. References
 
 ## 11. License
 
