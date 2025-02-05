@@ -45,6 +45,8 @@ PathWay is many things but at it's heart, it has the following idea: to help bui
 
 Currently it's just being set up but I thought I'd document the journey publicly here rather than building it and then just releasing 0.1.0. 
 
+To be clear, we are very far from even a PoC at this stage so if you want to follow, please do so but please note that most features that I plan to include aren't even listed, let alone started. 
+
 ### Elevator Pitch
 
 It's an easily deployable containerised solution that can take synoptic reports in FHIR and attach them to DICOM images, standardise to a custom ruleset, or take synoptic reports and attach them to other WSI types (please see below for supported types) and convert them to DICOM. 
