@@ -90,7 +90,8 @@ services:
         - ./Imported_Files:/scans
         - clamav-db:/var/lib/clamav  # Persist ClamAV signature database
         - clamav-socket:/run/clamav  # Ensure Clamd can find its socket
-      command: ["/bin/sh", "-c", "freshclam && mkdir -p /run/clamav && clamd"]
+      command: ["/bin/sh", "-c", "freshclam && mkdir -p /run/clamav && clamd --foreground --config-file=/etc/clamav/clamd.conf"]
+
 
 
   # -------- Uncomment to run with nginx --------
@@ -110,7 +111,7 @@ services:
   #     dockerfile: Dockerfile
   #   env_file:
   #     - ./src/.env
-  #   depends_on:
+  #   depends_on:c
   #     - db
   #     - web
   #   command: python -m src.scripts.create_first_superuser

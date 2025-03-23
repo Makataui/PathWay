@@ -168,3 +168,6 @@ cython_debug/
 PathWay.code-workspace
 slides/*
 
+local_dicom_extract.py
+
+src/.env.old

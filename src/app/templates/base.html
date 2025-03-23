@@ -24,7 +24,20 @@
         <a href="/database">Database</a>
         <a href="/upload_ds">Upload Dataset</a>
         <a href="/mapping">Mapping</a>
-        <a href="/sdc_example">SDC Example</a>
+         <!-- SDC Example with Static and Dynamic Links -->
+        <div class="dropdown">
+            <a href="#" class="dropdown-toggle">SDC Example ▼</a>
+            <div class="dropdown-menu">
+                <!-- Static Pages -->
+                <a href="/sdc_overview">SDC Overview</a>
+                <a href="/sdc_guidelines">SDC Guidelines</a>
+                <hr> <!-- Divider for clarity -->
+                <!-- Dynamic SDC Forms -->
+                {% for form in sdc_forms %}
+                    <a href="/view_sdc_form/{{ form.id }}">{{ form.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
         <a href="/fhir_example">FHIR Example</a>
         <a href="/xml_example">XML Example</a>
     </nav>
@@ -34,6 +47,53 @@
         {% block content %}
         {% endblock %}
     </div>
+
+
+    <!-- Styles for Dropdown -->
+    <style>
+        .dropdown {
+            display: inline-block;
+            position: relative;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            background-color: white;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            min-width: 160px;
+            z-index: 10;
+        }
+        .dropdown-menu a {
+            display: block;
+            padding: 8px 12px;
+            text-decoration: none;
+            color: black;
+        }
+        .dropdown-menu a:hover {
+            background-color: #f4f4f4;
+        }
+        .dropdown:hover .dropdown-menu {
+            display: block;
+        }
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const dropdown = document.querySelector(".dropdown-toggle");
+            const menu = document.querySelector(".dropdown-menu");
+
+            dropdown.addEventListener("click", function (event) {
+                event.preventDefault();
+                menu.style.display = menu.style.display === "block" ? "none" : "block";
+            });
+
+            document.addEventListener("click", function (event) {
+                if (!dropdown.contains(event.target) && !menu.contains(event.target)) {
+                    menu.style.display = "none";
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>
