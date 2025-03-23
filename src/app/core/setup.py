@@ -276,6 +276,10 @@ def create_application(
     async def upload_page(request: Request):
         return await render_template(request, "upload.html")
 
+    @application.get("/upload_ds", response_class=HTMLResponse)
+    async def upload_page(request: Request):
+        return await render_template(request, "upload_ds.html")
+
     # ---------- Viewer Route ----------
     @application.get("/viewer", response_class=HTMLResponse)
     async def viewer_page(request: Request):
