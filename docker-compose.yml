@@ -14,8 +14,10 @@ services:
     # expose:
     #   - "8000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - ./src/app:/code/app
       - ./src/.env:/code/.env
@@ -42,11 +44,16 @@ services:
       - ./src/.env
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     # -------- Replace with comment to run migrations with docker --------
-    expose:
-      - "5432"
-    # ports:
-    #  - "5432:5432"
+    #expose:
+    #  - "5432"
+    ports:
+      - "5432:5432"
 
   redis:
     image: redis:alpine
