@@ -256,6 +256,7 @@ def create_application(
             logger.error(f"Error rendering {template_name}: {e}", exc_info=True)
             return HTMLResponse(content=f"<h1>500 Internal Server Error</h1><p>{e}</p>", status_code=500)
     
+    #Main Section
     @application.get("/", response_class=HTMLResponse)
     async def home_page(request: Request):
         return await render_template(request, "index.html")
@@ -272,13 +273,35 @@ def create_application(
     async def database_page(request: Request):
         return await render_template(request, "database.html")
     
+    @application.get("/mapping", response_class=HTMLResponse)
+    async def mapping_page(request: Request):
+        return await render_template(request, "mapping.html")
+    
     @application.get("/upload", response_class=HTMLResponse)
     async def upload_page(request: Request):
         return await render_template(request, "upload.html")
 
     @application.get("/upload_ds", response_class=HTMLResponse)
-    async def upload_page(request: Request):
+    async def upload_ds_page(request: Request):
         return await render_template(request, "upload_ds.html")
+    
+    # Example Sections For Demonstrations
+    @application.get("/fhir_example", response_class=HTMLResponse)
+    async def fhir_example_page(request: Request):
+        return await render_template(request, "fhir_example.html")
+    
+    @application.get("/xml_example", response_class=HTMLResponse)
+    async def xml_example_page(request: Request):
+        return await render_template(request, "xml_example.html")
+    
+    @application.get("/sdc_example", response_class=HTMLResponse)
+    async def sdc_example_page(request: Request):
+        return await render_template(request, "sdc_example.html")
+    
+    # SDC Section Reload
+    @application.get("/sdc_overview", response_class=HTMLResponse)
+    async def sdc_overview_page(request: Request):
+        return await render_template(request, "sdc_overview.html")
 
     # ---------- Viewer Route ----------
     @application.get("/viewer", response_class=HTMLResponse)
