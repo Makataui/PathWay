@@ -38,15 +38,16 @@ services:
 
   db:
     image: postgres:13
+    platform: linux/amd64
     env_file:
       - ./src/.env
     volumes:
       - postgres-data:/var/lib/postgresql/data
     # -------- Replace with comment to run migrations with docker --------
-    expose:
-      - "5432"
-    # ports:
-    #  - "5432:5432"
+    #expose:
+    #  - "5432"
+    ports:
+      - "5432:5432"
 
   redis:
     image: redis:alpine
@@ -69,6 +70,7 @@ services:
   # -------- Uncomment to run with pgAdmin --------
   pgadmin:
     container_name: pathway_pgadmin4
+    platform: linux/amd64
     image: dpage/pgadmin4:latest
     restart: always
     ports:
@@ -82,6 +84,7 @@ services:
 
   clamav:
       image: clamav/clamav:latest
+      platform: linux/amd64
       container_name: clamav-1
       restart: always
       ports:

@@ -62,7 +62,7 @@ def get_deepzoom(slide_path):
     return DeepZoomGenerator(slide, tile_size=256, overlap=1, limit_bounds=True)
 
 
-
+# Function to extract DICOM metadata
 def extract_filtered_metadata(dicom_sample):
     """Extract DICOM metadata while **excluding** base64/binary fields."""
     dicom_dict = {}
