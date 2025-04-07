@@ -15,3 +15,7 @@ class TemplateGroup(Base):
 
     version = relationship("TemplateVersion", back_populates="groups")
     properties = relationship("TemplateProperty", back_populates="group", cascade="all, delete-orphan")
+    
+    def __init__(self, name: str, version_id: int):
+        self.name = name
+        self.version_id = version_id

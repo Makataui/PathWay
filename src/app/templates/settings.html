@@ -2,17 +2,32 @@
 {% block title %}Settings - PathWay{% endblock %}
 
 {% block content %}
-  <h1>Settings Page</h1>
-  <form method="POST" action="/settings">
-    <label for="profile">Select Profile:</label>
-    <select name="profile_id" id="profile">
-      {% for profile in profiles %}
-        <option value="{{ profile.id }}"
-          {% if profile.id == current_profile_id %}selected{% endif %}>
-          {{ profile.name }}
-        </option>
-      {% endfor %}
+<h1>Settings Page</h1>
+
+{% if success_message %}
+  <p style="color: green;">{{ success_message }}</p>
+{% endif %}
+
+<!-- Profile Selector -->
+<form method="post" action="/settings">
+    <label for="profile_id">Select Profile:</label>
+    <select name="profile_id" id="profile_id">
+        {% for profile in profiles %}
+            <option value="{{ profile.id }}" {% if current_profile_id == profile.id %}selected{% endif %}>
+                {{ profile.name }}
+            </option>
+        {% endfor %}
     </select>
-    <button type="submit">Set Profile</button>
-  </form>
+    <button type="submit">Set Active Profile</button>
+</form>
+
+<hr>
+
+<!-- Create New Profile -->
+<h2>Create New Profile</h2>
+<form method="post" action="/settings/create">
+    <label for="new_profile_name">New Profile Name:</label>
+    <input type="text" id="new_profile_name" name="name" required>
+    <button type="submit">Create Profile</button>
+</form>
 {% endblock %}

@@ -3,7 +3,10 @@ from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from typing import Any
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.status import HTTP_303_SEE_OTHER
 
+from uuid import UUID
+import asyncio
 import json
 import pydicom
 import anyio
@@ -15,11 +18,12 @@ from fastapi import APIRouter, Depends, FastAPI,Request, Response, Form
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.templating import Jinja2Templates
+from fastapi import UploadFile, File, Form
 from pathlib import Path
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from ..importers.xml_importer import import_xml_template 
 
 from .logger import logging
-
 import openslide
 from openslide.deepzoom import DeepZoomGenerator
 
@@ -299,6 +303,34 @@ def create_application(
         request.session["profile_id"] = profile_id
         return RedirectResponse(url="/settings", status_code=HTTP_303_SEE_OTHER)
 
+    #Create new profile:
+    @application.post("/settings/create", response_class=HTMLResponse)
+    async def create_new_profile(
+        request: Request,
+        name: str = Form(...),
+        db: AsyncSession = Depends(async_get_db),
+    ):
+        
+        # Check for duplicates
+        result = await db.execute(sa.select(Profile).where(Profile.name == name))
+        if result.scalar_one_or_none():
+            return await render_template(request, "settings.html", {
+                "success_message": f"A profile named '{name}' already exists.",
+                "profiles": (await db.execute(sa.select(Profile))).scalars().all(),
+                "current_profile_id": request.session.get("profile_id"),
+            })
+
+        profile = Profile(name=name)
+        db.add(profile)
+        await db.commit()
+
+        logger.info(f"Created new profile: {name} (id={profile.id})")
+
+        return await render_template(request, "settings.html", {
+            "success_message": f"Created new profile: {name}",
+            "profiles": (await db.execute(sa.select(Profile))).scalars().all(),
+            "current_profile_id": request.session.get("profile_id"),
+        })
 
     @application.get("/report", response_class=HTMLResponse)
     async def report_page(request: Request):
@@ -320,6 +352,54 @@ def create_application(
     async def upload_ds_page(request: Request):
         return await render_template(request, "upload_ds.html")
     
+    #XML Uploader
+    @application.get("/upload_xml", response_class=HTMLResponse)
+    async def upload_xml_page(request: Request):
+        return await render_template(request, "upload_xml.html")
+
+
+    @application.post("/upload_xml", response_class=HTMLResponse)
+    async def upload_xml(
+        request: Request,
+        xml_file: UploadFile = File(...),
+        db: AsyncSession = Depends(async_get_db)
+    ):
+        profile_id = request.session.get("profile_id")
+        if not profile_id:
+            logger.warning("Attempted upload without a selected profile.")
+            return HTMLResponse(content="<h3>Error: No profile selected.</h3>", status_code=400)
+
+        try:
+            xml_content = await xml_file.read()
+            xml_str = xml_content.decode("utf-8")
+        except Exception as e:
+            logger.error("Failed to read uploaded XML: %s", str(e))
+            return HTMLResponse(content=f"<h3>Error reading uploaded XML file: {e}</h3>", status_code=500)
+
+        try:
+            version = await asyncio.wait_for(
+                import_xml_template(db, xml_str, profile_id=UUID(profile_id)),
+                timeout=10  # seconds — adjust as needed
+            )
+
+            if version is None:
+                return HTMLResponse(content="<h3>Failed to import XML template.</h3>", status_code=500)
+
+            return await render_template(request, "upload_xml.html", {
+                "success_message": f"Template imported as version {version.version}."
+            })
+
+        except asyncio.TimeoutError:
+            logger.error("XML import timed out.")
+            await db.rollback()
+            return HTMLResponse(
+                content="<h3>XML import timed out. Please check the size or structure of your file.</h3>",
+                status_code=504
+            )
+        except Exception as e:
+            logger.exception("Unexpected error in XML import")
+            await db.rollback()
+            return HTMLResponse(content=f"<h3>Unexpected error: {str(e)}</h3>", status_code=500)
     # Example Sections For Demonstrations And Setup
     @application.get("/fhir_example", response_class=HTMLResponse)
     async def fhir_example_page(request: Request):

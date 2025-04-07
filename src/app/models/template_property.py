@@ -22,3 +22,25 @@ class TemplateProperty(Base):
 
     # Relationship
     group = relationship("TemplateGroup", back_populates="properties")
+
+    def __init__(
+        self,
+        name: str,
+        external_id: str = None,
+        datatype: str = "string",
+        is_array: bool = False,
+        is_object: bool = False,
+        json_path: str = None,
+        xml_path: str = None,
+        constraints: dict = None,
+        group_id: int = None,
+    ):
+        self.name = name
+        self.external_id = external_id
+        self.datatype = datatype
+        self.is_array = is_array
+        self.is_object = is_object
+        self.json_path = json_path
+        self.xml_path = xml_path
+        self.constraints = constraints
+        self.group_id = group_id

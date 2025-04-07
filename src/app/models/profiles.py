@@ -11,3 +11,6 @@ class Profile(Base):
     name = Column(String, unique=True, nullable=False)
 
     template_versions = relationship("TemplateVersion", back_populates="profile", cascade="all, delete-orphan")
+    
+    def __init__(self, name: str):
+        self.name = name

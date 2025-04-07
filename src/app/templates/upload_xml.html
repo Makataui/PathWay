@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Upload XML Template{% endblock %}
+
+{% block content %}
+  <h1>Upload XML Template</h1>
+
+  {% if success_message %}
+    <div style="color: green; font-weight: bold;">{{ success_message }}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    <label for="xml_file">Select XML file:</label><br />
+    <input type="file" name="xml_file" accept=".xml" required><br /><br />
+    <input type="submit" value="Upload and Import">
+  </form>
+{% endblock %}
