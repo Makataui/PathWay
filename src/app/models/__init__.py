@@ -6,3 +6,4 @@ from .sdc import SDCForm, SDCQuestion
 from .profiles import Profile
 from .template_group import TemplateGroup
 from .template_property import TemplateProperty
+from .template_version import TemplateVersion

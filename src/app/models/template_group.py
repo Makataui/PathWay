@@ -6,12 +6,12 @@ from ..core.db.database import Base
 
 
 class TemplateGroup(Base):
-    __tablename__ = 'template_groups'
+    __tablename__ = "template_groups"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
-    profile_id = Column(UUID(as_uuid=True), ForeignKey('profiles.id'), nullable=False)
 
-    # Relationships
-    profile = relationship("Profile", back_populates="template_groups")
+    version_id = Column(Integer, ForeignKey("template_versions.id"), nullable=False)
+
+    version = relationship("TemplateVersion", back_populates="groups")
     properties = relationship("TemplateProperty", back_populates="group", cascade="all, delete-orphan")
