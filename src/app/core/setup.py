@@ -1,6 +1,8 @@
 from collections.abc import AsyncGenerator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from typing import Any
+from sqlalchemy.ext.asyncio.session import AsyncSession
+from starlette.middleware.sessions import SessionMiddleware
 
 import json
 import pydicom
@@ -9,7 +11,7 @@ import fastapi
 import redis.asyncio as redis
 from arq import create_pool
 from arq.connections import RedisSettings
-from fastapi import APIRouter, Depends, FastAPI,Request, Response
+from fastapi import APIRouter, Depends, FastAPI,Request, Response, Form
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.templating import Jinja2Templates
@@ -34,7 +36,9 @@ from .config import (
     RedisRateLimiterSettings,
     settings,
 )
+import sqlalchemy as sa
 from .db.database import Base, async_engine as engine
+from .db.database import async_get_db
 from .utils import cache, queue, rate_limit
 from ..models import *
 
@@ -167,7 +171,16 @@ def lifespan_factory(
 
     return lifespan
 
-
+#------------Functions------------
+async def get_current_profile(
+    request: Request,
+    db: AsyncSession = Depends(async_get_db),
+) -> Profile | None:
+    profile_id = request.session.get("profile_id")
+    if not profile_id:
+        return None
+    result = await db.execute(sa.select(Profile).where(Profile.id == profile_id))
+    return result.scalar_one_or_none()
 # -------------- application --------------
 def create_application(
     router: APIRouter,
@@ -241,29 +254,51 @@ def create_application(
     application = FastAPI(lifespan=lifespan, **kwargs)
     application.include_router(router)
 
+    #Session middleware:
+    application.add_middleware(SessionMiddleware, secret_key="dev-secret-key-change-this")
+
+
     # Add Jinja2 templates to FastAPI
     application.state.templates = templates
 
     # Log when the app starts
     logger.info("PathWay Application has started.")
 
-    async def render_template(request: Request, template_name: str):
+    async def render_template(request: Request, template_name: str, context: dict[str, Any] = None):
         """Render a Jinja2 template and log errors."""
         try:
             logger.info(f"Rendering template: {template_name}")
-            return templates.TemplateResponse(template_name, {"request": request})
+            context = context or {}
+            context["request"] = request
+            return templates.TemplateResponse(template_name, context)
         except Exception as e:
             logger.error(f"Error rendering {template_name}: {e}", exc_info=True)
             return HTMLResponse(content=f"<h1>500 Internal Server Error</h1><p>{e}</p>", status_code=500)
-    
+
+
     #Main Section
     @application.get("/", response_class=HTMLResponse)
     async def home_page(request: Request):
         return await render_template(request, "index.html")
 
     @application.get("/settings", response_class=HTMLResponse)
-    async def settings_page(request: Request):
-        return await render_template(request, "settings.html")
+    async def settings_page(request: Request, db: AsyncSession = Depends(async_get_db)):
+        result = await db.execute(sa.select(Profile))  # `sa` is shorthand for `sqlalchemy`
+        profiles = result.scalars().all()
+
+        current_profile_id = request.session.get("profile_id")
+
+        return await render_template(request, "settings.html", {
+            "profiles": profiles,
+            "current_profile_id": current_profile_id,
+        })
+
+    #POST For Profiles
+    @application.post("/settings")
+    async def set_profile(request: Request, profile_id: str = Form(...)):
+        request.session["profile_id"] = profile_id
+        return RedirectResponse(url="/settings", status_code=HTTP_303_SEE_OTHER)
+
 
     @application.get("/report", response_class=HTMLResponse)
     async def report_page(request: Request):
@@ -302,6 +337,10 @@ def create_application(
     @application.get("/sdc_overview", response_class=HTMLResponse)
     async def sdc_overview_page(request: Request):
         return await render_template(request, "sdc_overview.html")
+    
+    @application.get("/sdc_guidelines", response_class=HTMLResponse)
+    async def sdc_overview_page(request: Request):
+        return await render_template(request, "sdc_guidelines.html")
 
     # ---------- Viewer Route ----------
     @application.get("/viewer", response_class=HTMLResponse)
@@ -513,3 +552,5 @@ def create_application(
             application.include_router(docs_router)
 
         return application
+    
+

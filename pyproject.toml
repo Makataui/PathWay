@@ -40,6 +40,7 @@ openslide-python = "^1.4.1"
 pillow = "^11.1.0"
 numpy = "^2.2.2"
 pydicom = "^3.0.1"
+itsdangerous = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 mkdocs = "^1.6.1"
