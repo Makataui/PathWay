@@ -4,7 +4,10 @@ from typing import Any
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_303_SEE_OTHER
-
+from fastapi.responses import StreamingResponse
+from io import BytesIO
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 from uuid import UUID
 import asyncio
 import json
@@ -21,7 +24,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.templating import Jinja2Templates
 from fastapi import UploadFile, File, Form
 from pathlib import Path
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse
 from ..importers.xml_importer import import_xml_template 
 
 from .logger import logging
@@ -437,6 +440,223 @@ def create_application(
             logger.exception("Unexpected error in mapping update")
             await db.rollback()
             return JSONResponse({"error": f"Unexpected error: {str(e)}"}, status_code=500)
+
+    @application.get("/export_template_xml")
+    async def export_template_xml(
+        request: Request,
+        db: AsyncSession = Depends(async_get_db)
+    ):
+        profile_id = request.session.get("profile_id")
+        if not profile_id:
+            return HTMLResponse("<h3>No profile selected.</h3>", status_code=400)
+
+        try:
+            stmt = (
+                select(TemplateVersion)
+                .where(TemplateVersion.profile_id == UUID(profile_id))
+                .where(TemplateVersion.version_is_active == True)
+                .options(selectinload(TemplateVersion.groups).selectinload(TemplateGroup.properties))
+            )
+            result = await db.execute(stmt)
+            active_version = result.scalars().first()
+
+            if not active_version:
+                return HTMLResponse("<h3>No active version found.</h3>", status_code=404)
+
+            # Build XML
+            root = ET.Element("Template")
+            for group in active_version.groups:
+                group_el = ET.SubElement(root, "Group", name=group.name)
+                for prop in group.properties:
+                    prop_attrs = {
+                        "name": prop.name,
+                        "type": prop.datatype or "string"
+                    }
+                    if prop.external_id:
+                        prop_attrs["id"] = prop.external_id
+                    if prop.json_path:
+                        prop_attrs["jsonPath"] = prop.json_path
+                    if prop.xml_path:
+                        prop_attrs["xmlPath"] = prop.xml_path
+                    if prop.fhir_mapping:
+                        prop_attrs["fhirMapping"] = prop.fhir_mapping
+                    if prop.hl7v2_path:
+                        prop_attrs["hl7v2Path"] = prop.hl7v2_path
+                    if prop.dicom_path:
+                        prop_attrs["dicomPath"] = prop.dicom_path
+                    if prop.is_array:
+                        prop_attrs["array"] = "true"
+                    if prop.is_object:
+                        prop_attrs["object"] = "true"
+                    if prop.constraints:
+                        allowed_values = prop.constraints.get("allowed_values")
+                        required = prop.constraints.get("required")
+                        constraints = []
+                        if allowed_values:
+                            constraints.append("allowed_values:" + "|".join(allowed_values))
+                        if required is not None:
+                            constraints.append("required:" + str(required).lower())
+                        if constraints:
+                            prop_attrs["constraints"] = ";".join(constraints)
+
+                    ET.SubElement(group_el, "Property", prop_attrs)
+
+            rough_string = ET.tostring(root, encoding="utf-8")
+            reparsed = minidom.parseString(rough_string)
+            pretty_xml = reparsed.toprettyxml(indent="  ", encoding="utf-8")
+
+            buf = BytesIO(pretty_xml)
+            filename = f"template_export_{active_version.version}.xml"
+
+            return StreamingResponse(
+                content=buf,
+                media_type="application/xml",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+
+        except Exception as e:
+            logger.exception("Error exporting template XML")
+            return HTMLResponse(f"<h3>Error exporting XML: {str(e)}</h3>", status_code=500)
+    
+    @application.get("/export_template_json")
+    async def export_template_json(request: Request, db: AsyncSession = Depends(async_get_db)):
+        try:
+            profile_id = request.session.get("profile_id")
+            if not profile_id:
+                return HTMLResponse(content="<h3>Error: No profile selected.</h3>", status_code=400)
+
+            stmt = (
+                select(TemplateVersion)
+                .where(TemplateVersion.profile_id == UUID(profile_id))
+                .where(TemplateVersion.version_is_active == True)
+                .options(selectinload(TemplateVersion.groups).selectinload(TemplateGroup.properties))
+            )
+
+            result = await db.execute(stmt)
+            version = result.scalars().first()
+
+            if not version:
+                return HTMLResponse("<h3>No active template version found for this profile.</h3>", status_code=404)
+
+            # Structure the template data
+            data = {
+                "version": version.version,
+                "profile_id": str(version.profile_id),
+                "groups": []
+            }
+
+            for group in version.groups:
+                group_data = {
+                    "name": group.name,
+                    "properties": []
+                }
+                for prop in group.properties:
+                    prop_data = {
+                        "name": prop.name,
+                        "type": prop.datatype,
+                        "is_array": prop.is_array,
+                        "is_object": prop.is_object,
+                        "external_id": prop.external_id,
+                        "json_path": prop.json_path,
+                        "xml_path": prop.xml_path,
+                        "fhir_mapping": prop.fhir_mapping,
+                        "hl7v2_path": prop.hl7v2_path,
+                        "dicom_path": prop.dicom_path,
+                        "constraints": prop.constraints or {}
+                    }
+                    group_data["properties"].append(prop_data)
+                data["groups"].append(group_data)
+
+            json_str = json.dumps(data, indent=2)  # Pretty-printed JSON
+            return StreamingResponse(
+                content=BytesIO(json_str.encode("utf-8")),
+                media_type="application/json",
+                headers={
+                    "Content-Disposition": "attachment; filename=template_export.json"
+                },
+            )
+
+        except Exception as e:
+            logger.exception("Error exporting template JSON")
+            return HTMLResponse(
+                content=f"<h3>Internal Server Error: {str(e)}</h3>",
+                status_code=500
+            )
+    #Temp HL7 exporter - will be abstracted and will put verify/parser in:
+    @application.get("/export_template_hl7v2")
+    async def export_hl7v2(request: Request, db: AsyncSession = Depends(async_get_db)):
+        try:
+            profile_id = request.session.get("profile_id")
+            if not profile_id:
+                return PlainTextResponse("No profile selected.", status_code=400)
+
+            stmt = (
+                select(TemplateVersion)
+                .where(TemplateVersion.profile_id == UUID(profile_id))
+                .where(TemplateVersion.version_is_active == True)
+                .options(selectinload(TemplateVersion.groups).selectinload(TemplateGroup.properties))
+            )
+            result = await db.execute(stmt)
+            version = result.scalars().first()
+
+            if not version:
+                return PlainTextResponse("No active template version found.", status_code=404)
+
+            hl7_segments = {}
+
+            for group in version.groups:
+                for prop in group.properties:
+                    if not prop.hl7v2_path:
+                        continue
+
+                    path_parts = prop.hl7v2_path.strip().split("-")
+                    segment = path_parts[0]
+                    field = int(path_parts[1]) if len(path_parts) > 1 else 1
+                    component = int(path_parts[2]) if len(path_parts) > 2 else 0
+
+                    if segment not in hl7_segments:
+                        hl7_segments[segment] = {}
+
+                    if field not in hl7_segments[segment]:
+                        hl7_segments[segment][field] = []
+
+                    while len(hl7_segments[segment][field]) < component:
+                        hl7_segments[segment][field].append("")
+
+                    if component == 0:
+                        hl7_segments[segment][field] = [prop.name]
+                    else:
+                        while len(hl7_segments[segment][field]) < component:
+                            hl7_segments[segment][field].append("")
+                        hl7_segments[segment][field][component - 1] = prop.name
+
+            output_lines = []
+            for segment, fields in hl7_segments.items():
+                max_field = max(fields.keys())
+                hl7_fields = [""] * max_field
+                for field_num, comps in fields.items():
+                    if isinstance(comps, list):
+                        hl7_fields[field_num - 1] = "^".join(comps)
+                    else:
+                        hl7_fields[field_num - 1] = comps
+                segment_str = f"{segment}|" + "|".join(hl7_fields)
+                output_lines.append(segment_str)
+
+            # Prepare file-like stream
+            hl7_bytes = "\n".join(output_lines).encode("utf-8")
+            stream = BytesIO(hl7_bytes)
+
+            return StreamingResponse(
+                stream,
+                media_type="text/plain",
+                headers={
+                    "Content-Disposition": 'attachment; filename="hl7_export.txt"'
+                }
+            )
+
+        except Exception as e:
+            logger.exception("Error exporting HL7 v2 message")
+            return PlainTextResponse(f"Internal Server Error: {str(e)}", status_code=500)
     
     @application.get("/upload", response_class=HTMLResponse)
     async def upload_page(request: Request):
