@@ -17,6 +17,10 @@ class TemplateProperty(Base):
 
     json_path = Column(String)                            # optional JSON path
     xml_path = Column(String)                             # optional XPath for XML
+    fhir_mapping = Column(String, nullable=True)          # e.g., "Patient.name.family"
+    hl7v2_path = Column(String, nullable=True)            # e.g., "PID.5.1"
+    dicom_path = Column(String, nullable=True)            # e.g., "0010,0010" or "PatientName"
+
 
     constraints = Column(JSON, nullable=True)             # e.g., {"required": true, "min": 0}
 
@@ -32,6 +36,8 @@ class TemplateProperty(Base):
         is_object: bool = False,
         json_path: str = None,
         xml_path: str = None,
+        fhir_mapping: str = None,
+        hl7v2_path: str = None,
         constraints: dict = None,
         group_id: int = None,
     ):
@@ -42,5 +48,7 @@ class TemplateProperty(Base):
         self.is_object = is_object
         self.json_path = json_path
         self.xml_path = xml_path
+        self.fhir_mapping = fhir_mapping
+        self.hl7v2_path = hl7v2_path
         self.constraints = constraints
         self.group_id = group_id

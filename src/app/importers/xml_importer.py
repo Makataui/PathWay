@@ -50,6 +50,9 @@ async def import_xml_template(
                 external_id = prop_el.attrib.get("id")
                 json_path = prop_el.attrib.get("jsonPath")
                 xml_path = prop_el.attrib.get("xmlPath")
+                fhir_mapping = prop_el.attrib.get("fhirMapping")
+                hl7v2_path = prop_el.attrib.get("hl7v2Path")
+                dicom_path = prop_el.attrib.get("dicomPath")
                 raw_constraints = prop_el.attrib.get("constraints")
 
                 # Parse constraints
@@ -74,6 +77,9 @@ async def import_xml_template(
                     external_id=external_id,
                     json_path=json_path,
                     xml_path=xml_path,
+                    fhir_mapping=fhir_mapping,
+                    hl7v2_path=hl7v2_path,
+                    dicom_path = dicom_path,
                     constraints=constraints or None,
                     group_id=group.id
                 )
