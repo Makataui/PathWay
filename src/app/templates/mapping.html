@@ -1,8 +1,87 @@
 {% extends "base.html" %}
-
-{% block title %}Mapping{% endblock %}
-
 {% block content %}
-    <h1>Mapping Page</h1>
-    <p>This is the Mapping page.</p>
+<h2>Active Template Mapping</h2>
+
+{% if active_version %}
+    <p><strong>Version:</strong> {{ active_version.version }}</p>
+
+    <form id="mapping-form">
+        <table border="1" cellspacing="0" cellpadding="6">
+            <thead>
+                <tr>
+                    <th>Group</th>
+                    <th>Property</th>
+                    <th>FHIR Mapping</th>
+                    <th>HL7v2 Path</th>
+                    <th>DICOM Path</th>
+                    <th>JSON Path</th>
+                    <th>XML Path</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for group in active_version.groups %}
+                    {% for prop in group.properties %}
+                        <tr>
+                            <td>{{ group.name }}</td>
+                            <td>{{ prop.name }}</td>
+                            <td><input type="text" name="fhir_mapping_{{ prop.id }}" value="{{ prop.fhir_mapping or '' }}" /></td>
+                            <td><input type="text" name="hl7v2_path_{{ prop.id }}" value="{{ prop.hl7v2_path or '' }}" /></td>
+                            <td><input type="text" name="dicom_path_{{ prop.id }}" value="{{ prop.dicom_path or '' }}" /></td>
+                            <td><input type="text" name="json_path_{{ prop.id }}" value="{{ prop.json_path or '' }}" /></td>
+                            <td><input type="text" name="xml_path_{{ prop.id }}" value="{{ prop.xml_path or '' }}" /></td>
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+        <br />
+        <button type="submit">Save Mappings</button>
+    </form>
+
+    <div id="response-message"></div>
+
+    <script>
+        document.getElementById("mapping-form").addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const form = e.target;
+            const inputs = form.querySelectorAll("input");
+            const updates = {};
+
+            inputs.forEach(input => {
+                const match = input.name.match(/(\w+)_([0-9]+)/);
+                if (!match) return;
+                const [_, field, id] = match;
+
+                if (!updates[id]) {
+                    updates[id] = { id: id };
+                }
+
+                updates[id][field] = input.value;
+            });
+
+            try {
+                const res = await fetch("/update_mappings", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(Object.values(updates)),
+                });
+
+                const result = await res.json();
+                const messageDiv = document.getElementById("response-message");
+
+                if (res.ok) {
+                    messageDiv.innerHTML = "<p style='color: green;'>Mappings saved successfully.</p>";
+                } else {
+                    messageDiv.innerHTML = `<p style='color: red;'>Error: ${result.errors.join("<br/>")}</p>`;
+                }
+            } catch (err) {
+                console.error("Error sending data:", err);
+            }
+        });
+    </script>
+{% else %}
+    <p><strong>No active template version found.</strong></p>
+{% endif %}
 {% endblock %}

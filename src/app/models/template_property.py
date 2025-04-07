@@ -38,6 +38,7 @@ class TemplateProperty(Base):
         xml_path: str = None,
         fhir_mapping: str = None,
         hl7v2_path: str = None,
+        dicom_path: str = None,
         constraints: dict = None,
         group_id: int = None,
     ):
@@ -50,5 +51,6 @@ class TemplateProperty(Base):
         self.xml_path = xml_path
         self.fhir_mapping = fhir_mapping
         self.hl7v2_path = hl7v2_path
+        self.dicom_path = dicom_path
         self.constraints = constraints
         self.group_id = group_id

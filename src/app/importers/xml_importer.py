@@ -79,7 +79,7 @@ async def import_xml_template(
                     xml_path=xml_path,
                     fhir_mapping=fhir_mapping,
                     hl7v2_path=hl7v2_path,
-                    dicom_path = dicom_path,
+                    dicom_path=dicom_path,
                     constraints=constraints or None,
                     group_id=group.id
                 )

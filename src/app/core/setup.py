@@ -13,6 +13,7 @@ import anyio
 import fastapi
 import redis.asyncio as redis
 from arq import create_pool
+from sqlalchemy.orm import selectinload
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, FastAPI,Request, Response, Form
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -41,6 +42,7 @@ from .config import (
     settings,
 )
 import sqlalchemy as sa
+from sqlalchemy import select
 from .db.database import Base, async_engine as engine
 from .db.database import async_get_db
 from .utils import cache, queue, rate_limit
@@ -341,10 +343,100 @@ def create_application(
     @application.get("/database", response_class=HTMLResponse)
     async def database_page(request: Request):
         return await render_template(request, "database.html")
-    
+    #Mapping expanded to include editing mappings
     @application.get("/mapping", response_class=HTMLResponse)
-    async def mapping_page(request: Request):
-        return await render_template(request, "mapping.html")
+    async def mapping_page(request: Request, db: AsyncSession = Depends(async_get_db)):
+        try:
+            profile_id = request.session.get("profile_id")
+            if not profile_id:
+                return HTMLResponse("<h3>Error: No profile selected.</h3>", status_code=400)
+
+            stmt = (
+                select(TemplateVersion)
+                .where(TemplateVersion.profile_id == UUID(profile_id))
+                .where(TemplateVersion.version_is_active == True)
+                .options(selectinload(TemplateVersion.groups).selectinload(TemplateGroup.properties))
+            )
+
+            result = await db.execute(stmt)
+            active_version = result.scalars().first()
+
+            if not active_version:
+                return HTMLResponse("<h3>No active template version found for this profile.</h3>", status_code=404)
+
+            return templates.TemplateResponse("mapping.html", {
+                "request": request,
+                "active_version": active_version
+            })
+
+        except Exception as e:
+            logger.exception("Error rendering mapping page")
+            return HTMLResponse(content=f"<h3>Internal Server Error: {str(e)}</h3>", status_code=500)
+
+    @application.post("/update_mappings")
+    async def update_mappings(
+        request: Request,
+        db: AsyncSession = Depends(async_get_db),
+    ):
+        """
+        Updates path mappings for a batch of template properties.
+        Ensures per-field validation, logs each change, and rolls back on partial failure.
+        """
+        try:
+            updates = await request.json()
+            if not isinstance(updates, list):
+                return JSONResponse({"error": "Invalid payload format. Expected a list."}, status_code=400)
+
+            errors = []
+            for i, mapping in enumerate(updates):
+                prop_id = mapping.get("id")
+                if not prop_id:
+                    errors.append(f"Missing 'id' in item {i}")
+                    continue
+
+                try:
+                    stmt = select(TemplateProperty).where(TemplateProperty.id == int(prop_id))
+                    result = await db.execute(stmt)
+                    prop: TemplateProperty = result.scalar_one_or_none()
+
+                    if not prop:
+                        errors.append(f"Property with id {prop_id} not found.")
+                        continue
+
+                    # Validate each mapping path (example: ensure it's a non-empty string)
+                    for field in ["fhir_mapping", "hl7v2_path", "dicom_path", "json_path"]:
+                        value = mapping.get(field)
+                        if value is not None and not isinstance(value, str):
+                            errors.append(f"Invalid value for '{field}' in property {prop_id}")
+                            continue
+
+                    logger.info(f"Updating property {prop_id} with: {mapping}")
+
+                    # Apply updates
+                    prop.fhir_mapping = mapping.get("fhir_mapping")
+                    prop.hl7v2_path = mapping.get("hl7v2_path")
+                    prop.dicom_path = mapping.get("dicom_path")
+                    prop.json_path = mapping.get("json_path")
+
+                except Exception as item_err:
+                    logger.exception(f"Error updating property {prop_id}: {item_err}")
+                    errors.append(f"Exception updating property {prop_id}: {str(item_err)}")
+
+            # If any errors occurred, rollback all changes and return error list
+            if errors:
+                logger.warning("Update failed with errors. Rolling back.")
+                await db.rollback()
+                return JSONResponse({"status": "error", "errors": errors}, status_code=400)
+
+            # Commit only if all went well
+            await db.commit()
+            logger.info("All mappings updated successfully.")
+            return JSONResponse({"status": "success"})
+
+        except Exception as e:
+            logger.exception("Unexpected error in mapping update")
+            await db.rollback()
+            return JSONResponse({"error": f"Unexpected error: {str(e)}"}, status_code=500)
     
     @application.get("/upload", response_class=HTMLResponse)
     async def upload_page(request: Request):
@@ -403,7 +495,7 @@ def create_application(
             await db.rollback()
             return HTMLResponse(content=f"<h3>Unexpected error: {str(e)}</h3>", status_code=500)
     # Validate xml
-    
+
     @application.get("/validate_xml", response_class=HTMLResponse)
     async def validate_xml_page(request: Request):
         return await render_template(request, "validate_xml.html")
