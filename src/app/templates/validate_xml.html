@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Validate XML - PathWay{% endblock %}
+
+{% block content %}
+<h2>Validate XML against Active Template</h2>
+
+<form method="post" enctype="multipart/form-data" action="/validate_xml">
+    <div style="margin-bottom: 10px;">
+        <input type="file" name="xml_file" accept=".xml" required>
+        <button type="submit">Validate XML</button>
+    </div>
+</form>
+
+{% if success_message %}
+    <div style="color: green; font-weight: bold;">
+        {{ success_message }}
+    </div>
+{% endif %}
+
+{% if error_messages %}
+    <div style="color: red;">
+        <p><strong>Validation Errors:</strong></p>
+        <ul>
+        {% for error in error_messages %}
+            <li>{{ error }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+{% endblock %}

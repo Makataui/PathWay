@@ -1,16 +1,11 @@
-# app/importers/xml_importer.py
-
 import logging
 from xml.etree import ElementTree as ET
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from uuid import UUID
 
 from ..models import TemplateVersion, TemplateGroup, TemplateProperty
-from ..core.db.database import async_get_db
 
 logger = logging.getLogger(__name__)
-
 
 async def import_xml_template(
     db: AsyncSession,
@@ -31,27 +26,22 @@ async def import_xml_template(
         return None
 
     try:
-        # Step 1: Create TemplateVersion
         version = TemplateVersion(
             profile_id=profile_id,
             version=version_label,
-            version_is_active=True,  # Set active if this is the only one
+            version_is_active=True,
         )
         db.add(version)
-        await db.flush()  # Get version.id
-
+        await db.flush()
         logger.info(f"Created TemplateVersion v{version.version} for profile {profile_id}")
 
-        # Step 2: Parse groups (you can customize this XPath logic)
         for group_el in root.findall(".//Group"):
             group_name = group_el.attrib.get("name", "UnnamedGroup")
             group = TemplateGroup(name=group_name, version_id=version.id)
             db.add(group)
             await db.flush()
-
             logger.info(f"Added TemplateGroup: {group_name}")
 
-            # Step 3: Parse properties under this group
             for prop_el in group_el.findall("Property"):
                 name = prop_el.attrib.get("name")
                 datatype = prop_el.attrib.get("type", "string")
@@ -60,7 +50,21 @@ async def import_xml_template(
                 external_id = prop_el.attrib.get("id")
                 json_path = prop_el.attrib.get("jsonPath")
                 xml_path = prop_el.attrib.get("xmlPath")
-                constraints = prop_el.attrib.get("constraints")  # JSON string or pipe-separated values
+                raw_constraints = prop_el.attrib.get("constraints")
+
+                # Parse constraints
+                constraints = {}
+                if raw_constraints:
+                    for item in raw_constraints.split(";"):
+                        if ":" not in item:
+                            continue
+                        key, value = item.split(":", 1)
+                        if key == "allowed_values":
+                            constraints["allowed_values"] = value.split("|")
+                        elif key == "required":
+                            constraints["required"] = value.lower() == "true"
+                        else:
+                            constraints[key] = value
 
                 property = TemplateProperty(
                     name=name,
@@ -70,17 +74,17 @@ async def import_xml_template(
                     external_id=external_id,
                     json_path=json_path,
                     xml_path=xml_path,
-                    constraints={"raw": constraints} if constraints else None,
+                    constraints=constraints or None,
                     group_id=group.id
                 )
 
-                logger.debug(f"Parsed property: {name} ({datatype})")
+                logger.debug(f"Parsed property: {name} ({datatype}), constraints={constraints}")
                 db.add(property)
 
         await db.commit()
         logger.info("XML template import completed successfully.")
         return version
-
+    #Catch exceptions
     except Exception as e:
         logger.exception("Error during XML template import: %s", str(e))
         await db.rollback()

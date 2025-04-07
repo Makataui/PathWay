@@ -45,6 +45,7 @@ from .db.database import Base, async_engine as engine
 from .db.database import async_get_db
 from .utils import cache, queue, rate_limit
 from ..models import *
+from ..validators.validate_xml import validate_xml_structure
 
 #Logger
 logger = logging.getLogger(__name__)
@@ -281,6 +282,7 @@ def create_application(
 
 
     #Main Section
+
     @application.get("/", response_class=HTMLResponse)
     async def home_page(request: Request):
         return await render_template(request, "index.html")
@@ -400,6 +402,39 @@ def create_application(
             logger.exception("Unexpected error in XML import")
             await db.rollback()
             return HTMLResponse(content=f"<h3>Unexpected error: {str(e)}</h3>", status_code=500)
+    # Validate xml
+    
+    @application.get("/validate_xml", response_class=HTMLResponse)
+    async def validate_xml_page(request: Request):
+        return await render_template(request, "validate_xml.html")
+
+    @application.post("/validate_xml", response_class=HTMLResponse)
+    async def validate_xml(
+        request: Request,
+        xml_file: UploadFile = File(...),
+        db: AsyncSession = Depends(async_get_db)
+    ):
+        profile_id = request.session.get("profile_id")
+        if not profile_id:
+            return HTMLResponse(content="<h3>No profile selected.</h3>", status_code=400)
+
+        try:
+            xml_content = await xml_file.read()
+            xml_str = xml_content.decode("utf-8")
+        except Exception as e:
+            logger.error("Error reading file: %s", str(e))
+            return HTMLResponse(content=f"<h3>Error reading uploaded XML file: {e}</h3>", status_code=500)
+
+        errors = await validate_xml_structure(db, xml_str, UUID(profile_id))
+        if not errors:
+            return await render_template(request, "validate_xml.html", {
+                "success_message": "Validation passed! Uploaded XML matches the active version."
+            })
+        else:
+            return await render_template(request, "validate_xml.html", {
+                "error_messages": errors
+            })
+
     # Example Sections For Demonstrations And Setup
     @application.get("/fhir_example", response_class=HTMLResponse)
     async def fhir_example_page(request: Request):
