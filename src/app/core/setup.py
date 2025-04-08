@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
+from contextlib import AsyncExitStack
 from typing import Any
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from starlette.middleware.sessions import SessionMiddleware
@@ -9,6 +10,7 @@ from io import BytesIO
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from uuid import UUID
+from uuid import uuid4
 import asyncio
 import json
 import pydicom
@@ -45,11 +47,14 @@ from .config import (
     settings,
 )
 import sqlalchemy as sa
+import uuid
+from datetime import datetime
 from sqlalchemy import select
 from .db.database import Base, async_engine as engine
 from .db.database import async_get_db
 from .utils import cache, queue, rate_limit
 from ..models import *
+from ..models.enums import ReportType
 from ..validators.validate_xml import validate_xml_structure
 
 #Logger
@@ -67,6 +72,35 @@ logger.info(f"Checking slides directory: {SLIDES_DIR}")
 
 # Initialize Jinja2
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+#Function to scan slides on start:
+async def register_slides_from_folder(slide_dir: Path, db: AsyncSession):
+    """Scan /slides and create Slide records for any that aren't already in the DB."""
+    slide_formats = {".svs", ".tiff", ".ndpi", ".vms", ".vmu", ".scn", ".mrxs", ".bif"}
+
+    for item in slide_dir.iterdir():
+        # Determine slide name for DB
+        if item.is_file() and item.suffix.lower() in slide_formats:
+            slide_name = item.name
+        elif item.is_dir() and any(f.suffix.lower() in {".dcm", ".mrxs", ".dat"} for f in item.iterdir()):
+            slide_name = item.name
+        else:
+            continue  # Not a supported slide
+
+        # Check if it already exists in DB
+        existing = await db.execute(select(Slide).where(Slide.slide_name == slide_name))
+        if not existing.scalar_one_or_none():
+            new_slide = Slide(
+                id=uuid4(),
+                slide_name=slide_name,
+                slide_label=None,
+                slide_barcode=None,
+                case_identifier=None,
+            )
+            db.add(new_slide)
+            logger.info(f"Registered new slide in DB: {slide_name}")
+
+    await db.commit()
 
 # -------------- deepzoom --------------
 # Function to create DeepZoom tiles
@@ -155,29 +189,68 @@ def lifespan_factory(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator:
         await set_threadpool_tokens()
+        db: AsyncSession | None = None
+        stack = AsyncExitStack()
 
-        if isinstance(settings, DatabaseSettings) and create_tables_on_start:
-            await create_tables()
+        try:
+            # Setup section
+            if isinstance(settings, DatabaseSettings) and create_tables_on_start:
+                await create_tables()
 
-        if isinstance(settings, RedisCacheSettings):
-            await create_redis_cache_pool()
+            if isinstance(settings, RedisCacheSettings):
+                await create_redis_cache_pool()
 
-        if isinstance(settings, RedisQueueSettings):
-            await create_redis_queue_pool()
+            if isinstance(settings, RedisQueueSettings):
+                await create_redis_queue_pool()
 
-        if isinstance(settings, RedisRateLimiterSettings):
-            await create_redis_rate_limit_pool()
+            if isinstance(settings, RedisRateLimiterSettings):
+                await create_redis_rate_limit_pool()
 
-        yield
+            #Open DB session manually
+            db_gen = async_get_db()
+            db = await anext(db_gen)
 
-        if isinstance(settings, RedisCacheSettings):
-            await close_redis_cache_pool()
+            # Scan slides folder and insert missing Slide entries
+            existing_slide_names = set()
+            result = await db.execute(select(Slide.slide_name))
+            existing_slide_names.update(row[0] for row in result.all())
 
-        if isinstance(settings, RedisQueueSettings):
-            await close_redis_queue_pool()
+            new_slides = []
 
-        if isinstance(settings, RedisRateLimiterSettings):
-            await close_redis_rate_limit_pool()
+            for slide_file in SLIDES_DIR.iterdir():
+                if not slide_file.is_file():
+                    continue
+
+                if slide_file.name not in existing_slide_names:
+                    new_slides.append(
+                        Slide(
+                            slide_name=slide_file.name
+                        )
+                    )
+
+            if new_slides:
+                db.add_all(new_slides)
+                await db.commit()
+                logging.info(f"Inserted {len(new_slides)} new slides on startup.")
+
+            yield
+
+        except Exception as e:
+            logging.exception("Error during application lifespan setup: %s", str(e))
+            raise
+
+        finally:
+            if db:
+                await db.close()
+
+            if isinstance(settings, RedisCacheSettings):
+                await close_redis_cache_pool()
+
+            if isinstance(settings, RedisQueueSettings):
+                await close_redis_queue_pool()
+
+            if isinstance(settings, RedisRateLimiterSettings):
+                await close_redis_rate_limit_pool()
 
     return lifespan
 
@@ -860,8 +933,11 @@ def create_application(
 
     
     @application.get("/metadata/{slide_name}")
-    async def get_metadata(slide_name: str):
-        """Return metadata for a given slide (SVS, TIFF, DICOM, etc.)."""
+    async def get_metadata(slide_name: str, db: AsyncSession = Depends(async_get_db)):
+        """
+        Return metadata for a given slide (SVS, TIFF, DICOM, etc.),
+        enriched with any associated Report data if a matching Slide exists.
+        """
         slide_path = SLIDES_DIR / slide_name
         logger.info(f"Fetching metadata for: {slide_name}, Full path: {slide_path}")
 
@@ -869,75 +945,79 @@ def create_application(
             logger.error(f"Slide not found: {slide_name} at {slide_path}")
             return JSONResponse(content={"error": "Slide not found"}, status_code=404)
 
-        # **DICOM Handling (Folder-Based Slides)**
-        if slide_path.is_dir():
-            dicom_files = list(slide_path.glob("*.dcm"))
-            if dicom_files:
-                try:
-                    dicom_sample = pydicom.dcmread(str(dicom_files[0]))
-
-                    # **Filtered DICOM Metadata (No Base64)**
-                    filtered_metadata = extract_filtered_metadata(dicom_sample)
-
-                    # **Log Safe Metadata**
-                    logger.info(f"Filtered DICOM metadata for {slide_name}: {json.dumps(filtered_metadata, indent=4)}")
-                    patient_name = dicom_sample.PatientName if "PatientName" in dicom_sample else "Unknown"
-                    patientID = dicom_sample.PatientID if "PatientID" in dicom_sample else "Unknown"
-                    specimenDescriptionSequence = dicom_sample.SpecimenDescriptionSequence if "SpecimenDescriptionSequence" in dicom_sample else "Unknown"
-                    acquisitionDate = dicom_sample.get("AcquisitionDate", "Unknown")
-
-                    
-                    logger.info(patient_name)
-                    logger.info("Patient ID: " + patientID)
-                    logger.info(specimenDescriptionSequence)
-                    logger.info("Acquisition: " + acquisitionDate)
-
-                    # **Extract Image Size**
-                    width = int(dicom_sample.Columns) if hasattr(dicom_sample, "Columns") else 1024
-                    height = int(dicom_sample.Rows) if hasattr(dicom_sample, "Rows") else 1024
-
-                    metadata = {
-                        "levels": 1,  # DICOM usually has only 1 level
-                        "tile_size": 256,
-                        "level_dimensions": [(width, height)],  # Fake single-level
-                        "max_width": width,
-                        "max_height": height,
-                        "metadata": filtered_metadata,  # Only safe metadata
-                    }
-
-                    return JSONResponse(metadata)
-
-                except Exception as e:
-                    logger.error(f"Error reading DICOM metadata for {slide_name}: {e}", exc_info=True)
-                    return JSONResponse(content={"error": str(e)}, status_code=500)
-
-        # **Standard Slide Handling (.svs, .tiff, etc.)**
         try:
-            slide = openslide.OpenSlide(str(slide_path))
-            dzi_gen = openslide.deepzoom.DeepZoomGenerator(slide, tile_size=256, overlap=1, limit_bounds=True)
-
-            # Use the **highest resolution level** for size
-            max_level = dzi_gen.level_count - 1
-            max_size = dzi_gen.level_dimensions[max_level]
-
+            # --- Default placeholder metadata ---
             metadata = {
-                "levels": dzi_gen.level_count,
-                "tile_size": 256,
-                "level_dimensions": dzi_gen.level_dimensions,
-                "max_width": max_size[0],
-                "max_height": max_size[1],
                 "macroscopy": "Placeholder macroscopy data",
                 "microscopy": "Placeholder microscopy data",
                 "clinical": "Placeholder clinical details",
-                "diagnosis": "Placeholder diagnosis"
+                "diagnosis": "Placeholder diagnosis",
             }
-            logger.info(f"Metadata retrieved successfully for: {slide_name}")
+
+            # --- Handle DICOM Folder ---
+            if slide_path.is_dir():
+                dicom_files = list(slide_path.glob("*.dcm"))
+                if dicom_files:
+                    dicom_sample = pydicom.dcmread(str(dicom_files[0]))
+                    filtered_metadata = extract_filtered_metadata(dicom_sample)
+
+                    width = int(dicom_sample.Columns) if hasattr(dicom_sample, "Columns") else 1024
+                    height = int(dicom_sample.Rows) if hasattr(dicom_sample, "Rows") else 1024
+
+                    metadata.update({
+                        "levels": 1,
+                        "tile_size": 256,
+                        "level_dimensions": [(width, height)],
+                        "max_width": width,
+                        "max_height": height,
+                        "metadata": filtered_metadata,
+                    })
+
+            # --- Handle SVS/Standard Slide ---
+            elif slide_path.is_file():
+                slide = openslide.OpenSlide(str(slide_path))
+                dzi_gen = DeepZoomGenerator(slide, tile_size=256, overlap=1, limit_bounds=True)
+                max_level = dzi_gen.level_count - 1
+                max_size = dzi_gen.level_dimensions[max_level]
+
+                metadata.update({
+                    "levels": dzi_gen.level_count,
+                    "tile_size": 256,
+                    "level_dimensions": dzi_gen.level_dimensions,
+                    "max_width": max_size[0],
+                    "max_height": max_size[1],
+                })
+
+            # --- Attempt to resolve matching Slide in DB ---
+            result = await db.execute(select(Slide).where(Slide.slide_name == slide_name))
+            slide = result.scalar_one_or_none()
+
+            if slide:
+                report_stmt = (
+                    select(Report)
+                    .where(Report.linked_object_id == slide.id)
+                    .where(Report.type == ReportType.SLIDE)
+                    .options(selectinload(Report.property_values))
+                )
+                report_result = await db.execute(report_stmt)
+                report = report_result.scalar_one_or_none()
+
+                if report:
+                    values = {pv.property_name: pv.value for pv in report.property_values}
+                    logger.info(f"Report values found for slide {slide_name}: {values}")
+                    metadata.update({
+                        "macroscopy": values.get("Macroscopy", metadata["macroscopy"]),
+                        "microscopy": values.get("Microscopy", metadata["microscopy"]),
+                        "clinical": values.get("ClinicalDetails", metadata["clinical"]),
+                        "diagnosis": values.get("Diagnosis", metadata["diagnosis"]),
+                    })
+
             return JSONResponse(metadata)
-        
+
         except Exception as e:
-            logger.error(f"Error retrieving metadata for {slide_name} : {str(e)}")
+            logger.exception(f"Error fetching metadata for {slide_name}: {str(e)}")
             return JSONResponse(content={"error": f"Internal Server Error: {str(e)}"}, status_code=500)
-    
+
     @application.get("/debug/files")
     async def debug_files():
         """Debugging route to list all files in the slides directory."""

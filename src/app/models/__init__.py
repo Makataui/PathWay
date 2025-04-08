@@ -9,3 +9,4 @@ from .template_property import TemplateProperty
 from .template_version import TemplateVersion
 from .report import Report
 from .report_property_value import ReportPropertyValue
+from .slides import Slide
