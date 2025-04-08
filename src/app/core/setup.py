@@ -997,13 +997,26 @@ def create_application(
                     select(Report)
                     .where(Report.linked_object_id == slide.id)
                     .where(Report.type == ReportType.SLIDE)
-                    .options(selectinload(Report.property_values))
+                    .options(
+                        selectinload(Report.property_values).selectinload(ReportPropertyValue.property)
+                    )
                 )
                 report_result = await db.execute(report_stmt)
                 report = report_result.scalar_one_or_none()
 
                 if report:
-                    values = {pv.property_name: pv.value for pv in report.property_values}
+                    def extract_value(pv: ReportPropertyValue):
+                        return (
+                            pv.string_value
+                            or pv.int_value
+                            or pv.float_value
+                            or pv.bool_value
+                    )
+                    values = {
+                        pv.property.name: extract_value(pv)
+                        for pv in report.property_values
+                        if pv.property is not None
+                    }
                     logger.info(f"Report values found for slide {slide_name}: {values}")
                     metadata.update({
                         "macroscopy": values.get("Macroscopy", metadata["macroscopy"]),
