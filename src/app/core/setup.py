@@ -8,6 +8,7 @@ from starlette.status import HTTP_303_SEE_OTHER
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom import minidom
 from uuid import UUID
 from uuid import uuid4
@@ -102,6 +103,15 @@ async def register_slides_from_folder(slide_dir: Path, db: AsyncSession):
 
     await db.commit()
 
+#---- Custom Functions ------ 
+
+def extract_value_rpv(pv: ReportPropertyValue):
+    return (
+        pv.string_value
+        or pv.int_value
+        or pv.float_value
+        or pv.bool_value
+    )
 # -------------- deepzoom --------------
 # Function to create DeepZoom tiles
 def get_deepzoom(slide_path):
@@ -319,7 +329,7 @@ def create_application(
     for caching, queue, and rate limiting, client-side caching, and customizing the API documentation
     based on the environment settings.
     """
-    # --- before creating application ---
+    # --- before creating application  ---
     if isinstance(settings, AppSettings):
         to_update = {
             "title": settings.APP_NAME,
@@ -843,6 +853,86 @@ def create_application(
         return await render_template(request, "sdc_guidelines.html")
 
     # ---------- Viewer Route ----------
+    @application.get("/export/json/{slide_name}")
+    async def export_json_slide_metadata(slide_name: str, db: AsyncSession = Depends(async_get_db)):
+        slide = (await db.execute(select(Slide).where(Slide.slide_name == slide_name))).scalar_one_or_none()
+        if not slide:
+            return JSONResponse(status_code=404, content={"error": "Slide not found"})
+
+        report_stmt = (
+            select(Report)
+            .where(Report.linked_object_id == slide.id)
+            .where(Report.type == ReportType.SLIDE)
+            .options(selectinload(Report.property_values).selectinload(ReportPropertyValue.property))
+        )
+        report = (await db.execute(report_stmt)).scalar_one_or_none()
+        if not report:
+            return JSONResponse(status_code=404, content={"error": "No report found"})
+
+        # Build JSON structure based on JSON paths
+        json_output = {}
+        for pv in report.property_values:
+            if not pv.property or not pv.property.json_path:
+                continue
+
+            keys = pv.property.json_path.split(".")
+            value = extract_value_rpv(pv)
+
+            # Recursively insert nested keys
+            current = json_output
+            for key in keys[:-1]:
+                current = current.setdefault(key, {})
+            current[keys[-1]] = value
+
+        json_bytes = json.dumps(json_output, indent=2).encode("utf-8")
+        return Response(
+            content=json_bytes,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{slide_name}.json"'}
+        )
+
+
+    @application.get("/export/xml/{slide_name}")
+    async def export_xml_slide_metadata(slide_name: str, db: AsyncSession = Depends(async_get_db)):
+        slide = (await db.execute(select(Slide).where(Slide.slide_name == slide_name))).scalar_one_or_none()
+        if not slide:
+            return JSONResponse(status_code=404, content={"error": "Slide not found"})
+
+        report_stmt = (
+            select(Report)
+            .where(Report.linked_object_id == slide.id)
+            .where(Report.type == ReportType.SLIDE)
+            .options(selectinload(Report.property_values).selectinload(ReportPropertyValue.property))
+        )
+        report = (await db.execute(report_stmt)).scalar_one_or_none()
+        if not report:
+            return JSONResponse(status_code=404, content={"error": "No report found"})
+
+        # Build XML
+        root = Element("Report")
+
+        for pv in report.property_values:
+            if not pv.property or not pv.property.xml_path:
+                continue
+
+            path_parts = pv.property.xml_path.split("/")
+            value = extract_value_rpv(pv)
+
+            current = root
+            for part in path_parts[:-1]:
+                found = current.find(part)
+                current = found if found is not None else SubElement(current, part)
+
+            final_element = SubElement(current, path_parts[-1])
+            final_element.text = str(value)
+
+        xml_bytes = tostring(root, encoding="utf-8")
+        return Response(
+            content=xml_bytes,
+            media_type="application/xml",
+            headers={"Content-Disposition": f'attachment; filename="{slide_name}.xml"'}
+        )
+
     @application.get("/viewer", response_class=HTMLResponse)
     async def viewer_page(request: Request):
         """Render the DeepZoom viewer page with all supported slides (files & folders)."""
@@ -1028,7 +1118,7 @@ def create_application(
                             {"property_name": prop, "value": val} for prop, val in values.items()
                         ]
                     })
-            #ß
+            #Test
             return JSONResponse(metadata)
 
         except Exception as e:
