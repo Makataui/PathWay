@@ -952,6 +952,7 @@ def create_application(
                 "microscopy": "Placeholder microscopy data",
                 "clinical": "Placeholder clinical details",
                 "diagnosis": "Placeholder diagnosis",
+                "synoptic_report": [] 
             }
 
             # --- Handle DICOM Folder ---
@@ -1023,8 +1024,11 @@ def create_application(
                         "microscopy": values.get("Microscopy", metadata["microscopy"]),
                         "clinical": values.get("ClinicalDetails", metadata["clinical"]),
                         "diagnosis": values.get("Diagnosis", metadata["diagnosis"]),
+                        "synoptic_report": [
+                            {"property_name": prop, "value": val} for prop, val in values.items()
+                        ]
                     })
-
+            #ß
             return JSONResponse(metadata)
 
         except Exception as e:

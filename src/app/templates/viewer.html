@@ -76,7 +76,19 @@
                     document.getElementById("microscopy").value = data.microscopy || "N/A";
                     document.getElementById("clinical").value = data.clinical || "N/A";
                     document.getElementById("diagnosis").value = data.diagnosis || "N/A";
+                    // --- Synoptic Report Table ---
+                    const synopticTable = document.getElementById("synopticReportTable");
+                    synopticTable.innerHTML = "";  // Clear previous
 
+                    if (Array.isArray(data.synoptic_report)) {
+                        data.synoptic_report.forEach(row => {
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `<td><b>${row.property_name}</b></td><td>${row.value}</td>`;
+                            synopticTable.appendChild(tr);
+                        });
+                    } else {
+                        synopticTable.innerHTML = "<tr><td>No synoptic data available.</td></tr>";
+                    }
                     let metadataTable = document.getElementById("metadataTable");
                     metadataTable.innerHTML = "";
 
